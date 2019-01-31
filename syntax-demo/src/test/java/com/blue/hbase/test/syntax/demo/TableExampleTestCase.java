@@ -8,11 +8,11 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.omg.IOP.TAG_ALTERNATE_IIOP_ADDRESS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -71,23 +71,116 @@ public class TableExampleTestCase {
     }
 
     @Test
-    public void insertTable() throws IOException {
+    public void insertRecord() throws IOException {
         Table table = conn.getTable(TableName.valueOf(tableName));
         Put put = new Put(Bytes.toBytes(rowkey));
         put.addColumn(Bytes.toBytes(family), Bytes.toBytes("name"), Bytes.toBytes("zhangsan"));
         put.addColumn(Bytes.toBytes(family), Bytes.toBytes("sex"), Bytes.toBytes("man"));
         put.addColumn(Bytes.toBytes(family), Bytes.toBytes("age"), Bytes.toBytes(65));
         table.put(put);
-
+        table.close();
         logger.info("插入成功");
     }
 
     @Test
-    public void selectTable() throws IOException {
+    public void deleteRecord() throws IOException {
+        Table table = conn.getTable(TableName.valueOf(tableName));
+        Delete delete = new Delete(Bytes.toBytes(rowkey));
+        delete.addColumn(Bytes.toBytes(family), Bytes.toBytes("sex"));
+        table.delete(delete);
+        table.close();
+        logger.info("记录删除成功");
+    }
+
+    @Test
+    public void selectRecord() throws IOException {
         Table table = conn.getTable(TableName.valueOf(tableName));
         Get get = new Get(Bytes.toBytes(rowkey));
         Result result = table.get(get);
         logger.info(result.toString());
+
+        logger.info("rowkey: " + Bytes.toString(result.getRow()) + "\t name: " + Bytes.toString(result.getValue(Bytes.toBytes(family), Bytes.toBytes("name"))));
+        logger.info("rowkey: " + Bytes.toString(result.getRow()) + "\t sex: " + Bytes.toString(result.getValue(Bytes.toBytes(family), Bytes.toBytes("sex"))));
+        logger.info("rowkey: " + Bytes.toString(result.getRow()) + "\t age: " + Bytes.toString(result.getValue(Bytes.toBytes(family), Bytes.toBytes("age"))));
+        table.close();
+    }
+
+    @Test
+    public void bitchRecord() throws IOException {
+        Table table = conn.getTable(TableName.valueOf(tableName));
+
+        List<Row> batch = new ArrayList<Row>();
+
+        Get get = new Get(Bytes.toBytes(rowkey));
+        get.addColumn(Bytes.toBytes(family), Bytes.toBytes("name"));
+        batch.add(get);
+
+        Put put = new Put(Bytes.toBytes("stu100003"));
+        put.addColumn(Bytes.toBytes(family), Bytes.toBytes("name"), Bytes.toBytes("wangwu"));
+        batch.add(put);
+
+        Delete delete = new Delete(Bytes.toBytes("stu100002"));
+        delete.addColumn(Bytes.toBytes(family), Bytes.toBytes("sex"));
+        batch.add(delete);
+
+
+        delete = new Delete(Bytes.toBytes("stu100002"));
+        delete.addColumn(Bytes.toBytes(family), Bytes.toBytes("age"));
+        batch.add(delete);
+
+        get = new Get(Bytes.toBytes(rowkey));
+        get.addColumn(Bytes.toBytes("no_family"), Bytes.toBytes("name"));
+        batch.add(get);
+
+        get = new Get(Bytes.toBytes(rowkey));
+        get.addColumn(Bytes.toBytes(family), Bytes.toBytes("age"));
+        batch.add(get);
+
+        put = new Put(Bytes.toBytes("stu100003"));
+        put.addColumn(Bytes.toBytes(family), Bytes.toBytes("age"), Bytes.toBytes(70));
+        batch.add(put);
+
+        Object[] results = new Object[7];
+
+        try {
+            table.batch(batch, results);
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+        }
+
+        for (Object obj : results) {
+            if (null != obj) {
+                logger.info(obj.toString());
+            }
+        }
+        table.close();
+    }
+
+    @Test
+    public void scannerTable() throws IOException {
+        Table table = conn.getTable(TableName.valueOf(tableName));
+        Scan scan = new Scan();
+        scan.withStartRow(Bytes.toBytes("stu10000"));
+        scan.withStopRow(Bytes.toBytes("stu10001"));
+        scan.addFamily(Bytes.toBytes(family));
+        scan.addColumn(Bytes.toBytes(family),Bytes.toBytes("name")).addColumn(Bytes.toBytes(family),Bytes.toBytes("sex"));
+        //缓存100行数据
+        scan.setCaching(100);
+        //缓存一行的50列数据
+        scan.setBatch(50);
+        ResultScanner resultScanner = null;
+        try {
+            resultScanner = table.getScanner(scan);
+            Result result = null;
+            while (null != (result = resultScanner.next())) {
+                logger.info(result.toString());
+            }
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+        } finally {
+            resultScanner.close();
+        }
+        table.close();
     }
 
     @After
