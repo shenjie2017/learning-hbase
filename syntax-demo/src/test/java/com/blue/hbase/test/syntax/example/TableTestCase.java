@@ -1,4 +1,4 @@
-package com.blue.hbase.test.syntax.demo;
+package com.blue.hbase.test.syntax.example;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -25,7 +25,7 @@ import java.util.List;
  * @Description:
  */
 
-public class TableExampleTestCase {
+public class TableTestCase {
     Logger logger = LoggerFactory.getLogger(getClass());
 
     Configuration conf = null;
@@ -152,33 +152,6 @@ public class TableExampleTestCase {
             if (null != obj) {
                 logger.info(obj.toString());
             }
-        }
-        table.close();
-    }
-
-    @Test
-    public void scannerTable() throws IOException {
-        Table table = conn.getTable(TableName.valueOf(tableName));
-        Scan scan = new Scan();
-        scan.withStartRow(Bytes.toBytes("stu10000"));
-        scan.withStopRow(Bytes.toBytes("stu10001"));
-        scan.addFamily(Bytes.toBytes(family));
-        scan.addColumn(Bytes.toBytes(family),Bytes.toBytes("name")).addColumn(Bytes.toBytes(family),Bytes.toBytes("sex"));
-        //缓存100行数据
-        scan.setCaching(100);
-        //缓存一行的50列数据
-        scan.setBatch(50);
-        ResultScanner resultScanner = null;
-        try {
-            resultScanner = table.getScanner(scan);
-            Result result = null;
-            while (null != (result = resultScanner.next())) {
-                logger.info(result.toString());
-            }
-        } catch (Exception e) {
-            logger.info(e.getMessage());
-        } finally {
-            resultScanner.close();
         }
         table.close();
     }
