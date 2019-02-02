@@ -202,6 +202,38 @@ public class FilterTestCase {
         logger.info("get " + rowkey + ":" + result.toString());
     }
 
+    @Test
+    public void singleColumnValueFilter() throws IOException {
+        Table table = conn.getTable(TableName.valueOf(tableName));
+        Scan scan = new Scan();
+        ResultScanner resultScanner = null;
+        Result result = null;
+        Filter filter = new SingleColumnValueFilter(Bytes.toBytes(family), Bytes.toBytes("name"), CompareOperator.EQUAL, new RegexStringComparator("i"));
+        scan.setFilter(filter);
+//        ((SingleColumnValueFilter) filter).setFilterIfMissing(true);
+        try {
+            resultScanner = table.getScanner(scan);
+
+            while (null != (result = resultScanner.next())) {
+                for (Cell cell : result.listCells()) {
+                    logger.info("rowkey:" + Bytes.toString(result.getRow()) +
+                            "\tfamliy:" + Bytes.toString(cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength()) +
+                            "\tcolumn:" + Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()) +
+                            "\tvalue:" + Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
+                }
+            }
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+        } finally {
+            resultScanner.close();
+        }
+
+        Get get = new Get(Bytes.toBytes(rowkey));
+        get.setFilter(filter);
+        result = table.get(get);
+        logger.info("get " + rowkey + ":" + result.toString());
+    }
+
     @After
     public void destroy() throws IOException {
         admin.close();
